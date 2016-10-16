@@ -42,15 +42,11 @@ function inug_init()
 	// Локализация плагина
 	load_plugin_textdomain( INUG, false, dirname( plugin_basename( __FILE__ ) ) . '/lang' );		
 		
-	// Проверка наличия плагина wp-handsontable-core
-	if ( defined( 'WP_HOT_CORE_VERSION' )) 
-	{
-		// Классы плагина
-		require( INUG_PATH . 'classes/inug_user_taxonomy.php' );
-		require( INUG_PATH . 'classes/inug_plugin.php' );
-			
-		// Инициализация плагина
-		new INUG_Plugin( INUG_PATH, INUG_URL );	
-	}
+	// Классы плагина
+	require( INUG_PATH . 'classes/inug_user_taxonomy.php' );
+	require( INUG_PATH . 'classes/inug_plugin.php' );
+	
+	// Инициализация плагина
+	new INUG_Plugin( INUG_PATH, INUG_URL );
 }
 

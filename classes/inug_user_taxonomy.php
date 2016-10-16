@@ -17,16 +17,24 @@ class INUG_User_Taxonomy
 	public $params;
 	
 	/**
+	 * Ссылка на объект плагина для чтения общих свойств и т.п.
+	 * @var INUG_Plugin
+	 */
+	public $manager;	
+	
+	/**
 	 * Конструктор
 	 * Инициализация таксономии
 	 * 
-	 * @param string	$taxonomy	// Имя таксономии
-	 * @param mixed		@params		// Параметры, см. https://codex.wordpress.org/Function_Reference/register_taxonomy
+	 * @param string		$taxonomy	Имя таксономии
+	 * @param mixed			$params		Параметры, см. https://codex.wordpress.org/Function_Reference/register_taxonomy
+	 * @param INUG_Plugin	$manager	Ссылка на объект плагина для чтения общих свойств и т.п.	 
 	 */
-	public function __construct( $name, $params )
+	public function __construct( $name, $params, $manager )
 	{
 		$this->name = $name;
 		$this->params = $params;
+		$this->manager = $manager;
 		
 		//  Коллбек для подсчета числа пользователей
 		$this->params['update_count_callback'] = array( $this, 'getUserCount' );
@@ -45,6 +53,8 @@ class INUG_User_Taxonomy
 			add_action( 'manage_' . $this->name . '_custom_column', array( $this, 'showUsersColumn' ), 10, 3 );
 			add_action( 'show_user_profile', array( $this, 'showProfileSection' ) );
 			add_action( 'edit_user_profile', array( $this, 'showProfileSection' ) );
+			add_action( 'personal_options_update', array( $this, 'saveProfileSection' ) );
+			add_action( 'edit_user_profile_update', array( $this, 'saveProfileSection' ) );			
 		}
 
 	}
@@ -134,7 +144,7 @@ class INUG_User_Taxonomy
 	 * @param object 	$user 	Объект пользователя.
 	 */	
 	public function showProfileSection( $user )
-	{
+	{		
 		// Текущая таксономия
 		$tax = get_taxonomy( $this->name );
 		
@@ -142,6 +152,8 @@ class INUG_User_Taxonomy
 		if ( ! current_user_can( $tax->cap->assign_terms ) )
 			return;
 		
+
+
 		// Список возможных значений - термов
 		$terms = get_terms( array(
 			'taxonomy'		=> $this->name,
@@ -164,21 +176,72 @@ class INUG_User_Taxonomy
 				foreach ( $terms as $term ) 
 				{ 
 					//echo '<pre>'; var_dump($term); '</pre>';
-					$termIdHTML = $this->name . '-' . $term->slug;
+					$termIdHTML = $this->name . '_' . $term->slug;
 					?>
-					<input type="checkbox" name="<?php esc_attr_e( $this->name ) ?>" id="<?php esc_attr_e( $termIdHTML ) ?>" value="<?php echo esc_attr( $term->slug ) ?>" <?php checked( true, is_object_in_term( $user->ID, $this->name, $term->slug ) ) ?> /> 
+					<input type="checkbox" name="<?php esc_attr_e( $this->name ) ?>[]" id="<?php esc_attr_e( $termIdHTML ) ?>" value="<?php echo esc_attr( $term->slug ) ?>" <?php checked( true, is_object_in_term( $user->ID, $this->name, $term->slug ) ) ?> /> 
 					<label for="<?php echo esc_attr( $termIdHTML ); ?>">
 						<?php esc_html_e( $term->name ) ?>
 					</label> <br />
 					<?php }
 			}
-			/* If there are no profession terms, display a message. */
+			/* If there are no tax terms, display a message. */
 			else {
 				_e( 'There is no data available.', INUG );
 			}
 		?></td>
 	</tr>
 </table>
-	<?php		
+	<?php
 	}
+	
+	/**
+	 * Сохраняет дополнительную секцию в профиле пользователя для управления таксономией
+	 *
+	 * @param int 	$user_id 	ID пользователя в БД
+	 */	
+	public function saveProfileSection( $user_id )
+	{
+		// Читаем таксономию
+		$tax = get_taxonomy( $this->name );
+		
+		/* Проверяем права пользователя */
+		if ( ! current_user_can( 'edit_user', $user_id ) && current_user_can( $tax->cap->assign_terms ) )
+			return false;
+		
+		// Читаем POST
+		$userData = ( isset( $_POST[ $this->name ] ) ) ? $_POST[ $this->name ] : array();
+		array_map('esc_attr', $userData);	// Sanitizing...
+
+		// Элементы таксономии
+		$terms = get_terms( array(
+			'taxonomy'		=> $this->name,
+			'hide_empty' 	=> false,
+		) );
+		
+		
+		// ID элементов таксономии, которые нужно установить
+		$termIds = array();
+		
+		// Проходим по всем значениям
+		foreach ($terms as $term)
+		{
+			// Если пункт отмечен...
+			if ( in_array( $term->slug, $userData) )
+			{
+				// Запоминаем ID элемента таксономии
+				$termIds[] = $term->term_id;
+			}
+		}
+		
+		// Очищаем текущие значения
+		//wp_set_object_terms( $user_id, null, $this->name );
+		
+		// Устанавливаем новые значения для таксономии
+		wp_set_object_terms( $user_id, $termIds, $this->name );
+		
+		// Сброс старого кэша связей
+		clean_object_term_cache( $user_id, $this->name );	
+
+	}
+	
 }

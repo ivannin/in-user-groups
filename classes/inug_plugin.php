@@ -5,26 +5,46 @@
 class INUG_Plugin
 {	
 	/**
-	 * Конструктор
-	 * Инициализация плагина
-	 */
-	public function __construct()
-	{
-		// Читаем таксономии
-		$taxonomies = $this->getTaxonomies();
-		// Регистрируем таксономии
-		foreach( $taxonomies as $name => $params )
-		{
-			$this->taxonomies[$name] = new INUG_User_Taxonomy( $name, $params );
-		}
-		
-	}
+	 * Путь к папке плагина
+	 * @var string
+	 */	 
+	public $path;
+	
+	/**
+	 * URL к папке плагина
+	 * @var string
+	 */	 
+	public $url;
 	
 	/**
 	 * Массив объектов таксономий для пользователя
 	 * @var mixed
 	 */
-	public $taxonomies = array();
+	public $taxonomies = array();	
+
+	/**
+	 * Конструктор
+	 * Инициализация плагина
+	 * 
+	 * @param string	$path	Путь к папке плагина
+	 * @param string	$url	URL к папке плагина
+	 */
+	public function __construct( $path, $url )
+	{
+		// Инициализируем свойства
+		$this->path = $path;
+		$this->url = $url;
+			
+		// Читаем таксономии
+		$taxonomies = $this->getTaxonomies();
+		
+		// Регистрируем таксономии
+		foreach( $taxonomies as $name => $params )
+		{
+			$this->taxonomies[$name] = new INUG_User_Taxonomy( $name, $params, $this );
+		}
+		
+	}
 	
 	/**
 	 * Возвращает массим требуемых таксономий
@@ -36,7 +56,7 @@ class INUG_Plugin
 	{
 		return array(
 			// Отделы компании
-			'department' => array(
+			'inug_department' => array(
 				'public' => true,
 				'labels' => array(
 					'name' 							=> __( 'Departments', INUG ),
