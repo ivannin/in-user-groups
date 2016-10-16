@@ -46,6 +46,7 @@ function inug_init()
 	if ( defined( 'WP_HOT_CORE_VERSION' )) 
 	{
 		// Классы плагина
+		require( INUG_PATH . 'classes/inug_user_taxonomy.php' );
 		require( INUG_PATH . 'classes/inug_plugin.php' );
 			
 		// Инициализация плагина
